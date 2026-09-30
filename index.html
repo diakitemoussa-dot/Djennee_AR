@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AR 360° Scroll Experience</title>
+    <title>AR 360° Vidéo - French</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { overflow: hidden; background: #000; font-family: system-ui, sans-serif; }
+        body { overflow: hidden; background: #000; font-family: system-ui, sans-serif; touch-action: none; }
         #canvas { display: block; width: 100vw; height: 100vh; }
         #ui {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
             z-index: 100; pointer-events: none; color: white;
             text-align: center; text-shadow: 0 2px 8px rgba(0,0,0,0.8);
         }
-        #frame-info { font-size: 14px; opacity: 0.9; }
+        #time-info { font-size: 14px; opacity: 0.9; }
         #progress-bar {
             width: 300px; height: 4px; background: rgba(255,255,255,0.3);
             border-radius: 2px; margin: 8px auto 0; overflow: hidden;
         }
-        #progress-fill { height: 100%; width: 0%; background: #fff; transition: width 0.1s; }
+        #progress-fill { height: 100%; width: 0%; background: #fff; transition: width 0.05s; }
         #ar-button {
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
             z-index: 100; padding: 12px 28px; background: #fff; color: #000;
@@ -38,23 +38,28 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .hidden { display: none !important; }
         #error-msg { color: #ff6b6b; display: none; margin-top: 16px; }
+        #hint {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,0.7); font-size: 13px; text-align: center;
+            pointer-events: none; white-space: nowrap;
+        }
     </style>
 </head>
 <body>
     <div id="loading">
         <div class="spinner"></div>
-        <div id="load-text">Chargement de Three.js...</div>
+        <div id="load-text">Chargement de la vidéo 360°...</div>
         <div id="load-progress">0%</div>
         <div id="error-msg"></div>
     </div>
     <canvas id="canvas"></canvas>
     <div id="ui">
-        <div id="frame-info">Frame 1 / 421</div>
+        <div id="time-info">0:00 / 3:30</div>
         <div id="progress-bar"><div id="progress-fill"></div></div>
     </div>
     <button id="ar-button" onclick="enterAR()">Entrer en AR</button>
+    <div id="hint">Scroll vertical pour naviguer dans la vidéo</div>
 
-    <!-- Three.js local (fiable) -->
     <script src="three.min.js"></script>
     <script src="app.js"></script>
 </body>

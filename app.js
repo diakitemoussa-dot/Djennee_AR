@@ -1,31 +1,15 @@
 const canvas = document.getElementById('canvas');
-const frameInfo = document.getElementById('frame-info');
+const timeInfo = document.getElementById('time-info');
 const progressFill = document.getElementById('progress-fill');
 const loadingEl = document.getElementById('loading');
 const loadText = document.getElementById('load-text');
 const loadProgress = document.getElementById('load-progress');
 const errorMsg = document.getElementById('error-msg');
 const arButton = document.getElementById('ar-button');
+const hint = document.getElementById('hint');
 
-const TOTAL_FRAMES = 421;
-
-function getFramePath(index) {
-    if (index < 121) {
-        // 1JPEG: frames 030-150 (121 frames)
-        const frameNum = index + 30;
-        return `1JPEG/ezgif-frame-${frameNum.toString().padStart(3, '0')}.jpg`;
-    } else if (index < 271) {
-        // 2JPEG: frames 001-150 (150 frames)
-        const frameNum = index - 120;
-        return `2JPEG/ezgif-frame-${frameNum.toString().padStart(3, '0')}.jpg`;
-    } else {
-        // 3JPEG: frames 001-150 (150 frames)
-        const frameNum = index - 270;
-        return `3JPEG/ezgif-frame-${frameNum.toString().padStart(3, '0')}.jpg`;
-    }
-}
-
-const framePaths = Array.from({ length: TOTAL_FRAMES }, (_, i) => getFramePath(i));
+const VIDEO_SRC = 'French.mp4';
+const VIDEO_DURATION = 210; // 3min30 en secondes
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -38,82 +22,66 @@ const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerH
 const geometry = new THREE.SphereGeometry(500, 60, 40);
 geometry.scale(-1, 1, 1);
 
-let currentTexture = null;
-let currentFrame = 0;
-let textures = new Array(TOTAL_FRAMES).fill(null);
-let loadedCount = 0;
-let isLoading = true;
+const video = document.createElement('video');
+video.src = VIDEO_SRC;
+video.crossOrigin = 'anonymous';
+video.playsInline = true;
+video.muted = true;
+video.loop = true;
+video.preload = 'metadata';
 
-const material = new THREE.MeshBasicMaterial({ map: null });
+const texture = new THREE.VideoTexture(video);
+texture.colorSpace = THREE.SRGBColorSpace;
+texture.minFilter = THREE.LinearFilter;
+texture.magFilter = THREE.LinearFilter;
+texture.generateMipmaps = false;
+
+const material = new THREE.MeshBasicMaterial({ map: texture });
 const sphere = new THREE.Mesh(geometry, material);
 scene.add(sphere);
 
-const textureLoader = new THREE.TextureLoader();
-
-function loadTexture(index) {
-    return new Promise((resolve, reject) => {
-        textureLoader.load(
-            framePaths[index],
-            (tex) => {
-                tex.colorSpace = THREE.SRGBColorSpace;
-                resolve({ index, texture: tex });
-            },
-            undefined,
-            (err) => reject(err)
-        );
-    });
-}
-
-async function preloadTextures() {
-    loadText.textContent = 'Chargement des images...';
-    const batchSize = 6;
-    for (let i = 0; i < TOTAL_FRAMES; i += batchSize) {
-        const end = Math.min(i + batchSize, TOTAL_FRAMES);
-        const batch = [];
-        for (let j = i; j < end; j++) {
-            batch.push(loadTexture(j));
-        }
-        try {
-            const results = await Promise.all(batch);
-            results.forEach(({ index, texture }) => {
-                textures[index] = texture;
-                loadedCount++;
-                const pct = Math.round((loadedCount / TOTAL_FRAMES) * 100);
-                loadProgress.textContent = `${loadedCount} / ${TOTAL_FRAMES} (${pct}%)`;
-            });
-        } catch (e) {
-            console.error('Erreur chargement batch:', e);
-            errorMsg.textContent = 'Erreur: ' + e.message;
-            errorMsg.style.display = 'block';
-        }
-    }
-    isLoading = false;
-    loadingEl.classList.add('hidden');
-    setFrame(0);
-    checkARSupport();
-}
-
-function setFrame(index) {
-    if (index < 0) index = 0;
-    if (index >= TOTAL_FRAMES) index = TOTAL_FRAMES - 1;
-    if (currentFrame === index) return;
-
-    currentFrame = index;
-    const tex = textures[index];
-    if (tex) {
-        if (currentTexture) currentTexture.dispose();
-        material.map = tex;
-        material.needsUpdate = true;
-        currentTexture = tex;
-    }
-
-    frameInfo.textContent = `Frame ${index + 1} / ${TOTAL_FRAMES}`;
-    progressFill.style.width = `${((index + 1) / TOTAL_FRAMES) * 100}%`;
-}
-
+let videoReady = false;
+let isLoading = true;
+let targetTime = 0;
+let currentTime = 0;
 let scrollAccumulator = 0;
 let lastScrollTime = 0;
-let targetFrame = 0;
+let rafId = null;
+
+function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+}
+
+function updateUI() {
+    timeInfo.textContent = `${formatTime(currentTime)} / ${formatTime(VIDEO_DURATION)}`;
+    progressFill.style.width = `${(currentTime / VIDEO_DURATION) * 100}%`;
+}
+
+function onVideoProgress() {
+    if (!videoReady && video.readyState >= 1) {
+        videoReady = true;
+        isLoading = false;
+        loadingEl.classList.add('hidden');
+        video.play().catch(() => {});
+        updateUI();
+        checkARSupport();
+    }
+    if (videoReady) {
+        const buffered = video.buffered.length ? video.buffered.end(video.buffered.length - 1) : 0;
+        const pct = Math.round((buffered / VIDEO_DURATION) * 100);
+        loadProgress.textContent = `${pct}%`;
+    }
+}
+
+video.addEventListener('loadedmetadata', onVideoProgress);
+video.addEventListener('progress', onVideoProgress);
+video.addEventListener('error', (e) => {
+    errorMsg.textContent = 'Erreur chargement vidéo: ' + e.message;
+    errorMsg.style.display = 'block';
+    loadText.textContent = 'Échec du chargement';
+});
 
 function onWheel(e) {
     e.preventDefault();
@@ -122,23 +90,26 @@ function onWheel(e) {
     lastScrollTime = now;
 
     scrollAccumulator += e.deltaY > 0 ? 1 : -1;
-    const threshold = 3;
+    const threshold = 2;
 
     if (Math.abs(scrollAccumulator) >= threshold) {
-        targetFrame = Math.max(0, Math.min(TOTAL_FRAMES - 1, currentFrame + (scrollAccumulator > 0 ? 1 : -1)));
+        const delta = scrollAccumulator > 0 ? 0.5 : -0.5;
+        targetTime = Math.max(0, Math.min(VIDEO_DURATION, currentTime + delta));
         scrollAccumulator = 0;
     }
 }
 
 let touchStartY = 0;
-function onTouchStart(e) { touchStartY = e.touches[0].clientY; }
+let touchStartTime = 0;
+function onTouchStart(e) {
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = currentTime;
+}
 function onTouchMove(e) {
     if (touchStartY === 0) return;
-    const delta = touchStartY - e.touches[0].clientY;
-    if (Math.abs(delta) > 30) {
-        targetFrame = Math.max(0, Math.min(TOTAL_FRAMES - 1, currentFrame + (delta > 0 ? 1 : -1)));
-        touchStartY = 0;
-    }
+    const deltaY = touchStartY - e.touches[0].clientY;
+    const sensitivity = VIDEO_DURATION / window.innerHeight * 1.5;
+    targetTime = Math.max(0, Math.min(VIDEO_DURATION, touchStartTime + deltaY * sensitivity));
 }
 function onTouchEnd() { touchStartY = 0; }
 
@@ -148,14 +119,21 @@ window.addEventListener('touchmove', onTouchMove, { passive: true });
 window.addEventListener('touchend', onTouchEnd);
 
 function animate() {
-    renderer.setAnimationLoop(render);
+    rafId = requestAnimationFrame(animate);
+    render();
 }
 
 function render() {
-    if (targetFrame !== currentFrame) {
-        const diff = targetFrame - currentFrame;
-        const step = Math.sign(diff);
-        setFrame(currentFrame + step);
+    if (videoReady) {
+        const diff = targetTime - currentTime;
+        if (Math.abs(diff) > 0.02) {
+            currentTime += diff * 0.15;
+            video.currentTime = currentTime;
+        } else {
+            currentTime = targetTime;
+            video.currentTime = currentTime;
+        }
+        updateUI();
     }
     renderer.render(scene, camera);
 }
@@ -185,18 +163,21 @@ async function checkARSupport() {
 }
 
 window.enterAR = async function() {
+    hint.style.display = 'none';
     try {
         const session = await navigator.xr.requestSession('immersive-ar', {
             requiredFeatures: ['local-floor', 'hit-test'],
             optionalFeatures: ['dom-overlay'],
             domOverlay: { root: document.body }
         });
+        renderer.xr.setReferenceSpaceType('local-floor');
         await renderer.xr.setSession(session);
         arButton.textContent = 'Quitter AR';
         arButton.onclick = exitAR;
     } catch (e) {
         console.error('Erreur AR:', e);
         alert('Impossible de démarrer AR: ' + e.message);
+        hint.style.display = 'block';
     }
 };
 
@@ -204,7 +185,7 @@ function exitAR() {
     renderer.xr.setSession(null);
     arButton.textContent = 'Entrer en AR';
     arButton.onclick = enterAR;
+    hint.style.display = 'block';
 }
 
-preloadTextures();
 animate();

@@ -1,3 +1,4 @@
 1JPEG/** filter=lfs diff=lfs merge=lfs -text
 2JPEG/** filter=lfs diff=lfs merge=lfs -text
 3JPEG/** filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
