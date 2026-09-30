@@ -8,19 +8,21 @@ const errorMsg = document.getElementById('error-msg');
 const arButton = document.getElementById('ar-button');
 
 const TOTAL_FRAMES = 421;
-const FRAMES_PER_FOLDER = [121, 150, 150];
-const FOLDER_NAMES = ['1JPEG', '2JPEG', '3JPEG'];
 
 function getFramePath(index) {
-    let folderIdx = 0;
-    let localIdx = index;
-    while (folderIdx < FRAMES_PER_FOLDER.length && localIdx >= FRAMES_PER_FOLDER[folderIdx]) {
-        localIdx -= FRAMES_PER_FOLDER[folderIdx];
-        folderIdx++;
+    if (index < 121) {
+        // 1JPEG: frames 030-150 (121 frames)
+        const frameNum = index + 30;
+        return `1JPEG/ezgif-frame-${frameNum.toString().padStart(3, '0')}.jpg`;
+    } else if (index < 271) {
+        // 2JPEG: frames 001-150 (150 frames)
+        const frameNum = index - 120;
+        return `2JPEG/ezgif-frame-${frameNum.toString().padStart(3, '0')}.jpg`;
+    } else {
+        // 3JPEG: frames 001-150 (150 frames)
+        const frameNum = index - 270;
+        return `3JPEG/ezgif-frame-${frameNum.toString().padStart(3, '0')}.jpg`;
     }
-    const frameNum = localIdx + 1;
-    const numStr = frameNum.toString().padStart(3, '0');
-    return `${FOLDER_NAMES[folderIdx]}/ezgif-frame-${numStr}.jpg`;
 }
 
 const framePaths = Array.from({ length: TOTAL_FRAMES }, (_, i) => getFramePath(i));
