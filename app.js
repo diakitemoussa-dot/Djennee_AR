@@ -43,8 +43,8 @@ function initThree() {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 1.5));
         renderer.xr.enabled = true;
 
-        renderer.getContext().addEventListener('webglcontextlost', onContextLost, false);
-        renderer.getContext().addEventListener('webglcontextrestored', onContextRestored, false);
+        canvas.addEventListener('webglcontextlost', onContextLost, false);
+        canvas.addEventListener('webglcontextrestored', onContextRestored, false);
 
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
