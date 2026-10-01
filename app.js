@@ -8,7 +8,7 @@ const errorMsg = document.getElementById('error-msg');
 const arButton = document.getElementById('ar-button');
 const hint = document.getElementById('hint');
 
-const VIDEO_SRC = 'https://github.com/diakitemoussa-dot/Djennee_AR/releases/download/v1.0/French.mp4';
+const VIDEO_SRC = 'English.mp4';
 const VIDEO_DURATION = 210;
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
